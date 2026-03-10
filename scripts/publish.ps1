@@ -62,15 +62,17 @@ New-Item -ItemType Directory -Path $DistDir | Out-Null
 
 $svcOut = Join-Path $DistDir "Service"
 
-Invoke-DotnetPublish -DotnetArgs @(
+$serviceDotnetArgs = @(
   "publish",
   ".\src\RdpShield.Service\RdpShield.Service.csproj",
   "-c", $Configuration,
   "-r", $Runtime,
-  "/p:PublishProfile=$ServicePublishProfile",
-  $versionArgs,
-  "-o", $svcOut
+  "/p:PublishProfile=$ServicePublishProfile"
 )
+if ($versionArgs.Count -gt 0) { $serviceDotnetArgs += $versionArgs }
+$serviceDotnetArgs += @("-o", $svcOut)
+
+Invoke-DotnetPublish -DotnetArgs $serviceDotnetArgs
 
 # -------------------------
 # Manager (WinUI: self-contained build output is stable; publish drops XAML resources)
@@ -79,7 +81,7 @@ Invoke-DotnetPublish -DotnetArgs @(
 $mgrOut = Join-Path $DistDir "Manager"
 $managerSelfContainedArg = if ($ManagerSelfContained) { "true" } else { "false" }
 
-Invoke-DotnetBuild -DotnetArgs @(
+$managerDotnetArgs = @(
   "build",
   ".\src\RdpShield.Manager\RdpShield.Manager.csproj",
   "-c", $Configuration,
@@ -88,9 +90,11 @@ Invoke-DotnetBuild -DotnetArgs @(
   "/p:PublishReadyToRun=false",
   "/p:PublishTrimmed=false",
   "/p:DebugType=None",
-  "/p:DebugSymbols=false",
-  $versionArgs
+  "/p:DebugSymbols=false"
 )
+if ($versionArgs.Count -gt 0) { $managerDotnetArgs += $versionArgs }
+
+Invoke-DotnetBuild -DotnetArgs $managerDotnetArgs
 
 $managerExe = Get-ChildItem -Path ".\src\RdpShield.Manager\bin\$Configuration" -Recurse -Filter "RdpShield.Manager.exe" |
   Where-Object { $_.FullName -match "\\$([Regex]::Escape($Runtime))\\" } |
