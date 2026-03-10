@@ -1,6 +1,7 @@
 param(
   [string]$Configuration = "Release",
   [string]$Runtime = "win-x64",
+  [string]$Version = "",
   [bool]$ManagerSelfContained = $false,
   [string]$ServicePublishProfile = ".\src\RdpShield.Service\Properties\PublishProfiles\Service.Release.pubxml",
   [string]$DistDir = "$(Resolve-Path .)\dist"
@@ -33,6 +34,23 @@ function Invoke-DotnetBuild {
   }
 }
 
+$versionArgs = @()
+if (-not [string]::IsNullOrWhiteSpace($Version)) {
+  if ($Version -notmatch '^\d+\.\d+\.\d+$') {
+    throw "Version must match x.y.z (for example: 1.2.3)."
+  }
+
+  $fileVersion = "$Version.0"
+  $versionArgs = @(
+    "/p:Version=$Version",
+    "/p:AssemblyVersion=$fileVersion",
+    "/p:FileVersion=$fileVersion",
+    "/p:InformationalVersion=$Version"
+  )
+
+  Write-Host "Using version: $Version (file/assembly: $fileVersion)" -ForegroundColor DarkCyan
+}
+
 if (Test-Path $DistDir) {
   Remove-Item $DistDir -Recurse -Force
 }
@@ -50,6 +68,7 @@ Invoke-DotnetPublish -DotnetArgs @(
   "-c", $Configuration,
   "-r", $Runtime,
   "/p:PublishProfile=$ServicePublishProfile",
+  $versionArgs,
   "-o", $svcOut
 )
 
@@ -69,7 +88,8 @@ Invoke-DotnetBuild -DotnetArgs @(
   "/p:PublishReadyToRun=false",
   "/p:PublishTrimmed=false",
   "/p:DebugType=None",
-  "/p:DebugSymbols=false"
+  "/p:DebugSymbols=false",
+  $versionArgs
 )
 
 $managerExe = Get-ChildItem -Path ".\src\RdpShield.Manager\bin\$Configuration" -Recurse -Filter "RdpShield.Manager.exe" |

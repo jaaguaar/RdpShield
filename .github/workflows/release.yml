@@ -1,0 +1,203 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      should_release: ${{ steps.bump.outputs.should_release }}
+      last_tag: ${{ steps.bump.outputs.last_tag }}
+      bump: ${{ steps.bump.outputs.bump }}
+      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate next semantic version
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+
+          LAST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)
+
+          if [[ -n "$LAST_TAG" ]]; then
+            RANGE="$LAST_TAG..HEAD"
+          else
+            RANGE="HEAD"
+            LAST_TAG="v0.0.0"
+          fi
+
+          COMMITS=$(git log --format=%s $RANGE || true)
+
+          if [[ -z "$COMMITS" ]]; then
+            echo "No commits since $LAST_TAG. Skipping release."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BUMP=""
+          if echo "$COMMITS" | grep -Eiq '^\[major\]'; then
+            BUMP="major"
+          elif echo "$COMMITS" | grep -Eiq '^\[minor\]'; then
+            BUMP="minor"
+          elif echo "$COMMITS" | grep -Eiq '^\[patch\]'; then
+            BUMP="patch"
+          else
+            echo "Commits since $LAST_TAG do not start with [major], [minor], or [patch]."
+            echo "$COMMITS"
+            exit 1
+          fi
+
+          RAW=${LAST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$RAW"
+
+          case "$BUMP" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          VERSION="$MAJOR.$MINOR.$PATCH"
+          TAG="v$VERSION"
+
+          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Version summary
+        if: steps.bump.outputs.should_release == 'true'
+        shell: bash
+        run: |
+          echo "Last tag: ${{ steps.bump.outputs.last_tag }}"
+          echo "Bump:     ${{ steps.bump.outputs.bump }}"
+          echo "Version:  ${{ steps.bump.outputs.version }}"
+          echo "Tag:      ${{ steps.bump.outputs.tag }}"
+
+  build:
+    runs-on: windows-2022
+    needs: version
+    if: needs.version.outputs.should_release == 'true'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Run tests
+        shell: pwsh
+        run: dotnet test .\tests\RdpShield.Tests\RdpShield.Tests.csproj -v minimal
+
+      - name: Publish app payloads
+        shell: pwsh
+        run: .\scripts\publish.ps1 -Configuration Release -Runtime win-x64 -Version "${{ needs.version.outputs.version }}"
+
+      - name: Build installer (MSI + Setup EXE)
+        shell: pwsh
+        run: .\scripts\build-installer.ps1 -Configuration Release -Runtime win-x64 -Version "${{ needs.version.outputs.version }}"
+
+      - name: Collect release assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $releaseDir = Join-Path $PWD 'artifacts\release'
+          New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+
+          $msi = Get-ChildItem .\installer\RdpShield.Msi\bin -Recurse -Filter *.msi |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $msi) { throw 'MSI output not found.' }
+
+          $setup = Get-ChildItem .\installer\RdpShield.Bundle\bin -Recurse -Filter *.exe |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if (-not $setup) { throw 'Setup EXE output not found.' }
+
+          Copy-Item -Recurse -Force .\dist\Service (Join-Path $releaseDir 'Service')
+          Copy-Item -Recurse -Force .\dist\Manager (Join-Path $releaseDir 'Manager')
+
+          Copy-Item -Force $msi.FullName (Join-Path $releaseDir $msi.Name)
+          Copy-Item -Force $setup.FullName (Join-Path $releaseDir $setup.Name)
+
+          Compress-Archive -Path .\dist\Service\* -DestinationPath (Join-Path $releaseDir "RdpShield.Service.${{ needs.version.outputs.version }}.zip") -Force
+          Compress-Archive -Path .\dist\Manager\* -DestinationPath (Join-Path $releaseDir "RdpShield.Manager.${{ needs.version.outputs.version }}.zip") -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rdpshield-release-assets
+          path: artifacts/release
+          if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - version
+      - build
+    if: needs.version.outputs.should_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: rdpshield-release-assets
+          path: release-assets
+
+      - name: Create GitHub release with tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t ASSETS < <(find release-assets -maxdepth 1 -type f | sort)
+          if [[ ${#ASSETS[@]} -eq 0 ]]; then
+            echo "No release assets found"
+            exit 1
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --title "RdpShield $TAG" \
+              --target "$GITHUB_SHA" \
+              --generate-notes
+          fi

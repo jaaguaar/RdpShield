@@ -94,6 +94,12 @@ dotnet run --project .\src\RdpShield.Cli\RdpShield.Cli.csproj -- tail
 .\scripts\publish.ps1 -Configuration Release -Runtime win-x64
 ```
 
+With explicit version (used for EXE/DLL file properties):
+
+```powershell
+.\scripts\publish.ps1 -Configuration Release -Runtime win-x64 -Version 1.2.3
+```
+
 Output:
 - `dist/Service`
 - `dist/Manager`
@@ -188,6 +194,12 @@ Build installer:
 .\scripts\build-installer.ps1 -Configuration Release -Runtime win-x64
 ```
 
+With explicit version (MSI/Bundle version + app binaries):
+
+```powershell
+.\scripts\build-installer.ps1 -Configuration Release -Runtime win-x64 -Version 1.2.3
+```
+
 Optional:
 
 ```powershell
@@ -199,3 +211,23 @@ Notes:
 - Prerequisite installers are downloaded from URLs in `installer/Installer.Version.props` and embedded into setup payloads.
 - Detect conditions are used to avoid reinstalling already-present prerequisites.
 - URLs can be switched to internal mirrors/offline payloads for disconnected installs.
+
+## Automated Versioning (GitHub Actions)
+
+Workflow: `.github/workflows/release.yml`
+
+Behavior:
+- Trigger: push to `main` (or manual run).
+- Reads the latest tag matching `vX.Y.Z`.
+- Reads commit subjects since that tag and determines bump by prefix:
+  - `[major]` -> major bump
+  - `[minor]` -> minor bump
+  - `[patch]` -> patch bump
+- Builds/tests/publishes with computed version.
+- Builds MSI + Setup EXE with the same version.
+- Creates GitHub Release and tag `vX.Y.Z`.
+
+Example commit messages:
+- `[patch] fix dashboard footer text`
+- `[minor] add quick actions IP block`
+- `[major] switch API contract for events`

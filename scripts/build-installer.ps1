@@ -1,6 +1,7 @@
 param(
   [string]$Configuration = "Release",
   [string]$Runtime = "win-x64",
+  [string]$Version = "",
   [bool]$IncludeWindowsAppRuntime = $true,
   [string]$DistDir = "$(Resolve-Path .)\dist"
 )
@@ -40,7 +41,7 @@ function Download-IfMissing {
 
 if (-not (Test-Path (Join-Path $DistDir "Service"))) {
   Write-Host "dist not found, running publish first..." -ForegroundColor Yellow
-  & "$PSScriptRoot\publish.ps1" -Configuration $Configuration -Runtime $Runtime -DistDir $DistDir
+  & "$PSScriptRoot\publish.ps1" -Configuration $Configuration -Runtime $Runtime -Version $Version -DistDir $DistDir
   if ($LASTEXITCODE -ne 0) {
     throw "publish.ps1 failed with exit code $LASTEXITCODE"
   }
@@ -66,6 +67,15 @@ if ([string]::IsNullOrWhiteSpace($dotnetUrl) -or [string]::IsNullOrWhiteSpace($w
   throw "Prerequisite URLs are missing in $installerPropsPath"
 }
 
+$effectiveVersion = $Version
+if ([string]::IsNullOrWhiteSpace($effectiveVersion)) {
+  $effectiveVersion = [string]$installerProps.Project.PropertyGroup.RdpShieldVersion
+}
+if ($effectiveVersion -notmatch '^\d+\.\d+\.\d+$') {
+  throw "Installer version must match x.y.z (resolved value: '$effectiveVersion')."
+}
+Write-Host "Using installer version: $effectiveVersion" -ForegroundColor DarkCyan
+
 $prereqDir = ".\installer\prereqs"
 $dotnetInstallerPath = Resolve-Path (Join-Path $prereqDir "windowsdesktop-runtime-10-win-x64.exe") -ErrorAction SilentlyContinue
 if ($dotnetInstallerPath) { $dotnetInstallerPath = $dotnetInstallerPath.Path }
@@ -85,6 +95,7 @@ Invoke-Dotnet -ActionName "MSI build" -DotnetArgs @(
   ".\installer\RdpShield.Msi\RdpShield.Msi.wixproj",
   "-t:Rebuild",
   "-c", $Configuration,
+  "-p:RdpShieldVersion=$effectiveVersion",
   "-p:ServiceSourceDir=$serviceDir",
   "-p:ManagerSourceDir=$managerDir"
 )
@@ -102,6 +113,7 @@ Invoke-Dotnet -ActionName "Bundle build" -DotnetArgs @(
   ".\installer\RdpShield.Bundle\RdpShield.Bundle.wixproj",
   "-t:Rebuild",
   "-c", $Configuration,
+  "-p:RdpShieldVersion=$effectiveVersion",
   "-p:MsiPath=$($msi.FullName)",
   "-p:IncludeWindowsAppRuntime=$([int]$IncludeWindowsAppRuntime)",
   "-p:DotNetDesktopRuntimePath=$dotnetInstallerPath",
