@@ -1,0 +1,29 @@
+<Project Sdk="WixToolset.Sdk/4.0.5">
+  <Import Project="..\Installer.Version.props" />
+
+  <PropertyGroup>
+    <OutputType>Bundle</OutputType>
+    <Platform>x64</Platform>
+    <OutputName>RdpShield.Setup.$(RdpShieldVersion)</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DefineConstants>
+      ProductManufacturer=$(RdpShieldManufacturer);
+      ProductName=$(RdpShieldProductName);
+      ProductVersion=$(RdpShieldVersion);
+      IncludeWindowsAppRuntime=$(IncludeWindowsAppRuntime);
+      DotNetDesktopRuntimePath=$(DotNetDesktopRuntimePath);
+      WindowsAppRuntimePath=$(WindowsAppRuntimePath);
+      MsiPath=$(MsiPath)
+    </DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Bal.wixext" Version="4.0.5" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="4.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RdpShield.Bootstrapper\Bootstrapper.csproj" />
+  </ItemGroup>
+</Project>

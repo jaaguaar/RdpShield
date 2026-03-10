@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <RdpShieldManufacturer>RdpShield</RdpShieldManufacturer>
+    <RdpShieldProductName>RdpShield</RdpShieldProductName>
+    <RdpShieldVersion>1.0.0</RdpShieldVersion>
+    <RdpShieldUpgradeCode>42bc1ea6-7d7b-43c9-bf5b-604e9c0f5033</RdpShieldUpgradeCode>
+
+    <!-- Online prerequisite URLs (can be switched to offline payloads later). -->
+    <DotNetDesktopRuntimeUrl>https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/10.0.3/windowsdesktop-runtime-10.0.3-win-x64.exe</DotNetDesktopRuntimeUrl>
+    <WindowsAppRuntimeUrl>https://aka.ms/windowsappsdk/1.8/1.8.260209005/windowsappruntimeinstall-x64.exe</WindowsAppRuntimeUrl>
+  </PropertyGroup>
+</Project>

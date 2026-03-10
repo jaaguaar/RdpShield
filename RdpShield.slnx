@@ -1,0 +1,23 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/RdpShield.Api.Client/RdpShield.Api.Client.csproj" />
+    <Project Path="src/RdpShield.Api/RdpShield.Api.csproj" />
+    <Project Path="src/RdpShield.Core/RdpShield.Core.csproj" />
+    <Project Path="src/RdpShield.Infrastructure.Sqlite/RdpShield.Infrastructure.Sqlite.csproj" />
+    <Project Path="src/RdpShield.Infrastructure.Windows/RdpShield.Infrastructure.Windows.csproj" />
+    <Project Path="src/RdpShield.Manager/RdpShield.Manager.csproj" />
+    <Project Path="src/RdpShield.Service/RdpShield.Service.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RdpShield.Tests/RdpShield.Tests.csproj" />
+  </Folder>
+  <Folder Name="/installer/">
+    <Project Path="installer/RdpShield.Msi/RdpShield.Msi.wixproj" />
+    <Project Path="installer/RdpShield.Bundle/RdpShield.Bundle.wixproj" />
+  </Folder>
+</Solution>

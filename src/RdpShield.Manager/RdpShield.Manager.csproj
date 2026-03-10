@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+		<ApplicationIcon>Assets\RdpShield.ico</ApplicationIcon>
+
+		<UseWinUI>true</UseWinUI>
+		<Nullable>enable</Nullable>
+
+		<WindowsPackageType>None</WindowsPackageType>
+		<EnableMsixTooling>false</EnableMsixTooling>
+
+		<PlatformTarget>x64</PlatformTarget>
+		<EnableDefaultPageItems>false</EnableDefaultPageItems>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Update="Assets\RdpShield.ico">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" />
+		<PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\RdpShield.Api.Client\RdpShield.Api.Client.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Page Include="MainWindow.xaml" />
+		<Compile Update="MainWindow.xaml.cs">
+			<DependentUpon>MainWindow.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="Views\DashboardPage.xaml" />
+		<Compile Update="Views\DashboardPage.xaml.cs">
+			<DependentUpon>DashboardPage.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="Views\ActivityPage.xaml" />
+		<Compile Update="Views\ActivityPage.xaml.cs">
+			<DependentUpon>ActivityPage.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="Views\BansPage.xaml" />
+		<Compile Update="Views\BansPage.xaml.cs">
+			<DependentUpon>BansPage.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="Views\AllowlistPage.xaml" />
+		<Compile Update="Views\AllowlistPage.xaml.cs">
+			<DependentUpon>AllowlistPage.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="Views\SettingsPage.xaml" />
+		<Compile Update="Views\SettingsPage.xaml.cs">
+			<DependentUpon>SettingsPage.xaml</DependentUpon>
+		</Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Page Include="Themes\Styles.xaml" />
+	</ItemGroup>
+</Project>

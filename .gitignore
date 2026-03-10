@@ -50,11 +50,14 @@ artifacts/
 
 ## Publish outputs (optional; keep if you want them in repo)
 **/publish/
+dist/
+.tmp/
 
 ## Logs & runtime data (recommended)
 *.log
 *.pid
 *.pid.lock
+*.data
 
 ## Config/state files (do not commit secrets / local settings)
 **/config.json

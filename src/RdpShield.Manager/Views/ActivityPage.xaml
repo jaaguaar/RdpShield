@@ -1,0 +1,140 @@
+<Page
+    x:Class="RdpShield.Manager.Views.ActivityPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:RdpShield.Manager.ViewModels"
+    xmlns:conv="using:RdpShield.Manager.Converters">
+
+    <Page.Resources>
+        <conv:PauseButtonTextConverter x:Key="PauseBtnText"/>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:EventTypeGlyphConverter x:Key="EventGlyph"/>
+        <conv:EventTypeBrushConverter x:Key="EventBrush"/>
+    </Page.Resources>
+
+    <Page.DataContext>
+        <vm:ActivityViewModel/>
+    </Page.DataContext>
+
+    <Grid Padding="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="360" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Activity" Style="{StaticResource PageTitleText}" />
+
+            <Button Grid.Column="1"
+                    VerticalAlignment="Center"
+                    MinWidth="96"
+                    Style="{StaticResource PrimaryButton}"
+                    Content="{Binding IsPaused, Converter={StaticResource PauseBtnText}}"
+                    Command="{Binding TogglePauseCommand}"
+                    ToolTipService.ToolTip="Freezes the list. Service keeps running; events are buffered." />
+
+            <TextBox Grid.Column="3"
+                     PlaceholderText="Search (username / ip / text)..."
+                     Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+
+        <Border Grid.Row="1"
+                Margin="0,12,0,0"
+                Style="{StaticResource InfoBannerBorder}"
+                Visibility="{Binding IsPaused, Converter={StaticResource BoolToVis}}">
+            <TextBlock>
+                <Run Text="Buffered: "/>
+                <Run Text="{Binding BufferedCount, Mode=OneWay}"/>
+            </TextBlock>
+        </Border>
+
+        <TextBlock Grid.Row="2" Margin="0,12,0,0" Text="{Binding Error}" Style="{StaticResource ErrorText}" />
+
+        <Grid Grid.Row="3" Margin="0,12,0,0" Style="{StaticResource TableHeaderGrid}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="34"/>
+                <ColumnDefinition Width="190"/>
+                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="1" BorderBrush="{StaticResource SubtleLineBrush}" BorderThickness="0,0,1,0">
+                <TextBlock Text="Time" Style="{StaticResource TableHeaderText}" Margin="0,0,8,0"/>
+            </Border>
+            <Border Grid.Column="2" BorderBrush="{StaticResource SubtleLineBrush}" BorderThickness="0,0,1,0">
+                <TextBlock Text="Username" Style="{StaticResource TableHeaderText}" Margin="0,0,8,0"/>
+            </Border>
+            <Border Grid.Column="3" BorderBrush="{StaticResource SubtleLineBrush}" BorderThickness="0,0,1,0">
+                <TextBlock Text="IP" Style="{StaticResource TableHeaderText}" Margin="0,0,8,0"/>
+            </Border>
+            <TextBlock Grid.Column="4" Text="Message" Style="{StaticResource TableHeaderText}"/>
+        </Grid>
+
+        <ListView x:Name="ActivityList"
+                  Grid.Row="4"
+                  Margin="0,6,0,0"
+                  ItemsSource="{Binding Events}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Style="{StaticResource RowGrid}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="34"/>
+                            <ColumnDefinition Width="190"/>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <FontIcon Glyph="{Binding Type, Converter={StaticResource EventGlyph}}"
+                                  Foreground="{Binding Type, Converter={StaticResource EventBrush}}"
+                                  FontSize="14"
+                                  VerticalAlignment="Center" />
+
+                        <Border Grid.Column="1" BorderBrush="{StaticResource SubtleLineBrush}" BorderThickness="0,0,1,0">
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Margin="0,0,8,0"
+                                       Text="{Binding TsUtc, Converter={StaticResource LocalDtFmt}, ConverterParameter='dd-MMM-yy HH:mm:ss'}"/>
+                        </Border>
+
+                        <Border Grid.Column="2" BorderBrush="{StaticResource SubtleLineBrush}" BorderThickness="0,0,1,0">
+                            <TextBlock Text="{Binding Username}"
+                                       Margin="0,0,8,0"
+                                       Style="{StaticResource MutedText}" />
+                        </Border>
+
+                        <Border Grid.Column="3" BorderBrush="{StaticResource SubtleLineBrush}" BorderThickness="0,0,1,0">
+                            <TextBlock Text="{Binding Ip}" Margin="0,0,8,0"/>
+                        </Border>
+
+                        <TextBlock Grid.Column="4"
+                                   Text="{Binding Message}"
+                                   TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+            <ListView.Footer>
+                <StackPanel HorizontalAlignment="Center" Margin="0,8,0,8">
+                    <ProgressRing Width="18"
+                                  Height="18"
+                                  IsActive="{Binding IsLoadingMore}" />
+                    <TextBlock Margin="0,6,0,0"
+                               Style="{StaticResource MutedText}"
+                               Text="{Binding EventsFooterText}" />
+                </StackPanel>
+            </ListView.Footer>
+        </ListView>
+
+    </Grid>
+</Page>

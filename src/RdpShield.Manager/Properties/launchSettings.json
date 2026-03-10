@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "RdpShield.Manager (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "RdpShield.Manager (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

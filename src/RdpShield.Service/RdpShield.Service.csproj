@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ApplicationIcon>..\RdpShield.Manager\Assets\RdpShield.ico</ApplicationIcon>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-RdpShield.Service-66272233-6d99-4d56-9ed9-9bb576c09e3b</UserSecretsId>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <StripSymbols>true</StripSymbols>
+    <SelfContained>true</SelfContained>
+    <!-- Third-party libs (Dapper/Serilog) are not fully trim/AOT annotated yet.
+         Keep warnings visible, but do not fail publish on these analyzer warnings. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104;IL3053</WarningsNotAsErrors>
+    <ILLinkTreatWarningsAsErrors>false</ILLinkTreatWarningsAsErrors>
+    <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.3" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RdpShield.Core\RdpShield.Core.csproj" />
+    <ProjectReference Include="..\RdpShield.Infrastructure.Sqlite\RdpShield.Infrastructure.Sqlite.csproj" />
+    <ProjectReference Include="..\RdpShield.Infrastructure.Windows\RdpShield.Infrastructure.Windows.csproj" />
+    <ProjectReference Include="..\RdpShield.Api\RdpShield.Api.csproj" />
+  </ItemGroup>
+
+</Project>

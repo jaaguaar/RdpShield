@@ -1,0 +1,76 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Bundle
+    Name="$(var.ProductName)"
+    Manufacturer="$(var.ProductManufacturer)"
+    Version="$(var.ProductVersion)"
+    UpgradeCode="7dc8d275-7415-45b8-aab6-7b4a4490015c"
+    IconSourceFile="$(sys.SOURCEFILEDIR)..\assets\RdpShield.ico">
+
+    <Variable Name="InstallDotNetDesktopRuntime" Type="numeric" Value="1" bal:Overridable="yes" />
+    <Variable Name="InstallWindowsAppRuntime" Type="numeric" Value="1" bal:Overridable="yes" />
+    <Variable Name="InstallDesktopShortcut" Type="numeric" Value="1" bal:Overridable="yes" />
+    <Variable Name="InstallStartMenuShortcut" Type="numeric" Value="1" bal:Overridable="yes" />
+    <util:RegistrySearch
+      Id="DotNetDesktopRuntimeSearch"
+      Root="HKLM"
+      Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
+      Value="Version"
+      Variable="DotNetDesktopRuntimeVersion"
+      Result="value" />
+    <util:RegistrySearch
+      Id="WindowsAppRuntimeSearch"
+      Root="HKLM"
+      Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Families\Microsoft.WindowsAppRuntime.1.8_8wekyb3d8bbwe"
+      Variable="WindowsAppRuntime18Installed"
+      Result="exists" />
+
+    <BootstrapperApplication bal:CommandLineVariables="caseInsensitive">
+      <bal:WixManagedBootstrapperApplicationHost />
+      <Payload SourceFile="$(var.Bootstrapper.TargetFileName)" bal:BAFactoryAssembly="yes" />
+      <Payload SourceFile="$(var.Bootstrapper.TargetDir)mbanative.dll" />
+      <Payload SourceFile="$(var.Bootstrapper.TargetDir)WixToolset.Mba.Core.dll" />
+      <Payload SourceFile="$(var.Bootstrapper.TargetDir)WixToolset.Mba.Host.config" />
+    </BootstrapperApplication>
+
+    <Chain>
+      <ExePackage
+        Id="DotNetDesktopRuntime10x64"
+        Name="windowsdesktop-runtime-10-win-x64.exe"
+        DisplayName=".NET Desktop Runtime 10 x64"
+        SourceFile="$(var.DotNetDesktopRuntimePath)"
+        bal:PrereqPackage="yes"
+        DetectCondition="DotNetDesktopRuntimeVersion AND DotNetDesktopRuntimeVersion >= v10.0.0"
+        InstallCondition="InstallDotNetDesktopRuntime = 1"
+        PerMachine="yes"
+        Permanent="yes"
+        Vital="yes"
+        InstallArguments="/install /quiet /norestart" />
+
+      <?if $(var.IncludeWindowsAppRuntime) = 1 ?>
+      <ExePackage
+        Id="WindowsAppRuntime18x64"
+        Name="windowsappruntimeinstall-x64.exe"
+        DisplayName="Windows App Runtime 1.8 x64"
+        SourceFile="$(var.WindowsAppRuntimePath)"
+        bal:PrereqPackage="yes"
+        DetectCondition="WindowsAppRuntime18Installed"
+        InstallCondition="InstallWindowsAppRuntime = 1"
+        PerMachine="yes"
+        Permanent="yes"
+        Vital="yes"
+        InstallArguments="--quiet --force --msix --license" />
+      <?endif?>
+
+      <MsiPackage
+        Id="RdpShieldMsi"
+        SourceFile="$(var.MsiPath)"
+        Visible="no"
+        Vital="yes">
+        <MsiProperty Name="INSTALLDESKTOPSHORTCUT" Value="[InstallDesktopShortcut]" />
+        <MsiProperty Name="INSTALLSTARTMENUSHORTCUT" Value="[InstallStartMenuShortcut]" />
+      </MsiPackage>
+    </Chain>
+  </Bundle>
+</Wix>
