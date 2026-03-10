@@ -111,6 +111,8 @@ $rc = $LASTEXITCODE
 if ($rc -ge 8) {
   throw "robocopy failed with exit code $rc"
 }
+# robocopy returns 0..7 for successful copy states; normalize process exit code for CI.
+$global:LASTEXITCODE = 0
 
 Write-Host "`nDone." -ForegroundColor Green
 Write-Host "Service: $svcOut"
