@@ -1,0 +1,47 @@
+<Project Sdk="WixToolset.Sdk/4.0.5">
+  <Import Project="..\Installer.Version.props" />
+
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <OutputName>RdpShield.$(RdpShieldVersion)</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);WIX6437</NoWarn>
+    <DefineConstants>
+      ProductManufacturer=$(RdpShieldManufacturer);
+      ProductName=$(RdpShieldProductName);
+      ProductVersion=$(RdpShieldVersion);
+      UpgradeCode=$(RdpShieldUpgradeCode);
+      ServiceSourceDir=$(ServiceSourceDir);
+      ManagerSourceDir=$(ManagerSourceDir)
+    </DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Heat" Version="4.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <HarvestDirectory Include="$(ServiceSourceDir)">
+      <ComponentGroupName>ServicePayload</ComponentGroupName>
+      <DirectoryRefId>SERVICEINSTALLDIR</DirectoryRefId>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+      <SuppressCom>true</SuppressCom>
+      <SuppressRegistry>true</SuppressRegistry>
+      <GenerateGuidsNow>true</GenerateGuidsNow>
+      <PreprocessorVariable>var.ServiceSourceDir</PreprocessorVariable>
+      <Transforms>$(MSBuildThisFileDirectory)RemoveServiceExeFromHarvest.xslt</Transforms>
+    </HarvestDirectory>
+    <HarvestDirectory Include="$(ManagerSourceDir)">
+      <ComponentGroupName>ManagerPayload</ComponentGroupName>
+      <DirectoryRefId>MANAGERINSTALLDIR</DirectoryRefId>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+      <SuppressCom>true</SuppressCom>
+      <SuppressRegistry>true</SuppressRegistry>
+      <GenerateGuidsNow>true</GenerateGuidsNow>
+      <PreprocessorVariable>var.ManagerSourceDir</PreprocessorVariable>
+    </HarvestDirectory>
+  </ItemGroup>
+
+</Project>

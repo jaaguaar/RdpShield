@@ -67,3 +67,9 @@ dist/
 *.msi
 *.exe
 *.zip
+
+# Keep WiX source project files under installer/ tracked.
+!installer/RdpShield.Msi/
+!installer/RdpShield.Msi/**
+installer/RdpShield.Msi/bin/
+installer/RdpShield.Msi/obj/
