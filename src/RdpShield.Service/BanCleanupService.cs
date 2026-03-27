@@ -36,10 +36,7 @@ public sealed class BanCleanupService : BackgroundService
             {
                 var now = _clock.UtcNow;
 
-                // IBanStore in this project does not have FindExpiredActiveBansAsync,
-                // so we derive expired bans from the active list.
-                var active = await _banStore.GetActiveBansAsync(stoppingToken);
-                var expired = active.Where(b => b.ExpiresUtc <= now).ToList();
+                var expired = await _banStore.GetExpiredActiveBansAsync(now, stoppingToken);
 
                 foreach (var ban in expired)
                 {

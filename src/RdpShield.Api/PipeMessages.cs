@@ -99,6 +99,7 @@ public sealed class SettingsDto
 
     public bool EnableFirewall { get; set; }
     public string FirewallRulePrefix { get; set; } = "RdpShield Block";
+    public int RdpPort { get; set; } = 3389;
 
     public int AllowlistRefreshSeconds { get; set; }
 }

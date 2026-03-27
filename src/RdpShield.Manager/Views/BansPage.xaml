@@ -27,7 +27,7 @@
             <TextBlock Text="Bans" Style="{StaticResource PageTitleText}" />
 
             <TextBox Grid.Column="1"
-                     PlaceholderText="Search (ip / reason / source)..."
+                     PlaceholderText="Search (ip / reason)..."
                      Text="{Binding Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 
@@ -63,16 +63,14 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="150"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="140"/>
                 <ColumnDefinition Width="190"/>
                 <ColumnDefinition Width="120"/>
             </Grid.ColumnDefinitions>
 
             <TextBlock Text="IP" Style="{StaticResource TableHeaderText}"/>
             <TextBlock Grid.Column="1" Text="Reason" Style="{StaticResource TableHeaderText}"/>
-            <TextBlock Grid.Column="2" Text="Source" Style="{StaticResource TableHeaderText}"/>
-            <TextBlock Grid.Column="3" Text="Expires" Style="{StaticResource TableHeaderText}"/>
-            <TextBlock Grid.Column="4" Text="Action" Style="{StaticResource TableHeaderText}"/>
+            <TextBlock Grid.Column="2" Text="Expires" Style="{StaticResource TableHeaderText}"/>
+            <TextBlock Grid.Column="3" Text="Action" Style="{StaticResource TableHeaderText}"/>
         </Grid>
 
         <ListView x:Name="BansList"
@@ -85,20 +83,18 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="150"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="140"/>
                             <ColumnDefinition Width="190"/>
                             <ColumnDefinition Width="120"/>
                         </Grid.ColumnDefinitions>
 
                         <TextBlock Text="{Binding Ip}" FontWeight="SemiBold"/>
                         <TextBlock Grid.Column="1" Text="{Binding Reason}" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Grid.Column="2" Text="{Binding Source}"/>
 
-                        <TextBlock Grid.Column="3"
+                        <TextBlock Grid.Column="2"
                                    Style="{StaticResource MutedText}"
                                    Text="{Binding ExpiresUtc, Converter={StaticResource LocalDtFmt}, ConverterParameter='dd-MMM-yy HH:mm:ss'}"/>
 
-                        <Button Grid.Column="4"
+                        <Button Grid.Column="3"
                                 Content="Unban"
                                 Style="{StaticResource DangerButton}"
                                 Command="{Binding ElementName=RootPage, Path=DataContext.UnbanCommand}"

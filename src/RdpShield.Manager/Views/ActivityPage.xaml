@@ -10,6 +10,7 @@
         <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <conv:EventTypeGlyphConverter x:Key="EventGlyph"/>
         <conv:EventTypeBrushConverter x:Key="EventBrush"/>
+        <conv:SimplifiedEventMessageConverter x:Key="SimpleEventMessage"/>
     </Page.Resources>
 
     <Page.DataContext>
@@ -118,7 +119,7 @@
                         </Border>
 
                         <TextBlock Grid.Column="4"
-                                   Text="{Binding Message}"
+                                   Text="{Binding Converter={StaticResource SimpleEventMessage}}"
                                    TextWrapping="NoWrap"
                                    TextTrimming="CharacterEllipsis"/>
                     </Grid>

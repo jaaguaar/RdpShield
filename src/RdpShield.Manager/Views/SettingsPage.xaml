@@ -129,6 +129,51 @@
 				<ToggleSwitch Header="Enable firewall rule changes"
                               IsOn="{Binding EnableFirewall, Mode=TwoWay}" />
 
+                <Grid ColumnSpacing="12" RowSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Firewall rule prefix"
+                               Grid.Row="0"
+                               Grid.Column="0"
+                               Style="{StaticResource MutedText}"/>
+                    <TextBox Grid.Row="0"
+                             Grid.Column="1"
+                             Text="{Binding FirewallRulePrefix, Mode=TwoWay}"
+                             PlaceholderText="RdpShield Block"/>
+
+                    <TextBlock Text="RDP port"
+                               Grid.Row="1"
+                               Grid.Column="0"
+                               Style="{StaticResource MutedText}"/>
+                    <NumberBox Grid.Row="1"
+                               Grid.Column="1"
+                               Value="{Binding RdpPort, Mode=TwoWay}"
+                               SpinButtonPlacementMode="Compact"
+                               SmallChange="1"
+                               Minimum="1"
+                               Maximum="65535"/>
+
+                    <TextBlock Text="Allowlist refresh (seconds)"
+                               Grid.Row="2"
+                               Grid.Column="0"
+                               Style="{StaticResource MutedText}"/>
+                    <NumberBox Grid.Row="2"
+                               Grid.Column="1"
+                               Value="{Binding AllowlistRefreshSeconds, Mode=TwoWay}"
+                               SpinButtonPlacementMode="Compact"
+                               SmallChange="1"
+                               Minimum="1"
+                               Maximum="3600"/>
+                </Grid>
+
 				<TextBlock Style="{StaticResource MutedText}"
                            Text="Changes apply immediately (on next event). Service restart is not required." />
 

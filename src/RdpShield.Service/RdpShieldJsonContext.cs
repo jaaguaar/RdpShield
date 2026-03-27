@@ -27,6 +27,7 @@ namespace RdpShield.Service;
 [JsonSerializable(typeof(List<AllowlistDto>))]
 [JsonSerializable(typeof(SettingsDto))]
 [JsonSerializable(typeof(RuntimeSettings))]
+[JsonSerializable(typeof(string))]
 [JsonSerializable(typeof(bool))]
 [JsonSerializable(typeof(JsonElement))]
 internal sealed partial class RdpShieldJsonContext : JsonSerializerContext

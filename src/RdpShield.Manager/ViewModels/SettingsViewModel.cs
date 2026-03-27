@@ -9,6 +9,8 @@ namespace RdpShield.Manager.ViewModels;
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly IRdpShieldClient _client = RdpShieldClientFactory.Create();
+    private const int MinAllowlistRefreshSeconds = 1;
+    private const int MaxAllowlistRefreshSeconds = 3600;
 
     private SettingsDto? _baseline;
     private CancellationTokenSource? _statusCts;
@@ -85,6 +87,39 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    private string _firewallRulePrefix = "RdpShield Block";
+    public string FirewallRulePrefix
+    {
+        get => _firewallRulePrefix;
+        set
+        {
+            if (SetProperty(ref _firewallRulePrefix, value))
+                RecalcDirty();
+        }
+    }
+
+    private int _rdpPort = 3389;
+    public int RdpPort
+    {
+        get => _rdpPort;
+        set
+        {
+            if (SetProperty(ref _rdpPort, value))
+                RecalcDirty();
+        }
+    }
+
+    private int _allowlistRefreshSeconds = 10;
+    public int AllowlistRefreshSeconds
+    {
+        get => _allowlistRefreshSeconds;
+        set
+        {
+            if (SetProperty(ref _allowlistRefreshSeconds, value))
+                RecalcDirty();
+        }
+    }
+
     public async Task LoadAsync()
     {
         try
@@ -98,13 +133,19 @@ public sealed partial class SettingsViewModel : ObservableObject
             WindowSeconds = s.WindowSeconds;
             BanMinutes = s.BanMinutes;
             EnableFirewall = s.EnableFirewall;
+            FirewallRulePrefix = s.FirewallRulePrefix;
+            RdpPort = s.RdpPort;
+            AllowlistRefreshSeconds = s.AllowlistRefreshSeconds;
 
             _baseline = new SettingsDto
             {
                 AttemptsThreshold = AttemptsThreshold,
                 WindowSeconds = WindowSeconds,
                 BanMinutes = BanMinutes,
-                EnableFirewall = EnableFirewall
+                EnableFirewall = EnableFirewall,
+                FirewallRulePrefix = FirewallRulePrefix,
+                RdpPort = RdpPort,
+                AllowlistRefreshSeconds = AllowlistRefreshSeconds
             };
 
             RecalcDirty();
@@ -140,6 +181,25 @@ public sealed partial class SettingsViewModel : ObservableObject
             return;
         }
 
+        if (AllowlistRefreshSeconds < MinAllowlistRefreshSeconds || AllowlistRefreshSeconds > MaxAllowlistRefreshSeconds)
+        {
+            Error = $"Allowlist refresh must be between {MinAllowlistRefreshSeconds} and {MaxAllowlistRefreshSeconds} seconds.";
+            return;
+        }
+
+        var firewallRulePrefix = (FirewallRulePrefix ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(firewallRulePrefix))
+        {
+            Error = "Firewall rule prefix cannot be empty.";
+            return;
+        }
+
+        if (RdpPort < 1 || RdpPort > 65535)
+        {
+            Error = "RDP port must be between 1 and 65535.";
+            return;
+        }
+
         try
         {
             IsLoading = true;
@@ -151,7 +211,10 @@ public sealed partial class SettingsViewModel : ObservableObject
                 AttemptsThreshold = AttemptsThreshold,
                 WindowSeconds = WindowSeconds,
                 BanMinutes = BanMinutes,
-                EnableFirewall = EnableFirewall
+                EnableFirewall = EnableFirewall,
+                FirewallRulePrefix = firewallRulePrefix,
+                RdpPort = RdpPort,
+                AllowlistRefreshSeconds = AllowlistRefreshSeconds
             };
 
             await _client.UpdateSettingsAsync(dto);
@@ -161,8 +224,13 @@ public sealed partial class SettingsViewModel : ObservableObject
                 AttemptsThreshold = AttemptsThreshold,
                 WindowSeconds = WindowSeconds,
                 BanMinutes = BanMinutes,
-                EnableFirewall = EnableFirewall
+                EnableFirewall = EnableFirewall,
+                FirewallRulePrefix = firewallRulePrefix,
+                RdpPort = RdpPort,
+                AllowlistRefreshSeconds = AllowlistRefreshSeconds
             };
+
+            FirewallRulePrefix = firewallRulePrefix;
 
             RecalcDirty();
 
@@ -190,7 +258,10 @@ public sealed partial class SettingsViewModel : ObservableObject
             AttemptsThreshold != _baseline.AttemptsThreshold ||
             WindowSeconds != _baseline.WindowSeconds ||
             BanMinutes != _baseline.BanMinutes ||
-            EnableFirewall != _baseline.EnableFirewall;
+            EnableFirewall != _baseline.EnableFirewall ||
+            !string.Equals((FirewallRulePrefix ?? string.Empty).Trim(), (_baseline.FirewallRulePrefix ?? string.Empty).Trim(), StringComparison.Ordinal) ||
+            RdpPort != _baseline.RdpPort ||
+            AllowlistRefreshSeconds != _baseline.AllowlistRefreshSeconds;
     }
 
     private void ShowStatusFor(string text, TimeSpan duration)

@@ -28,19 +28,19 @@ public sealed class AllowlistCached : IAllowlist
 
     private void EnsureFresh()
     {
-        var now = DateTimeOffset.UtcNow;
+        // Fast path: avoid lock if cache is still fresh (stale read is acceptable here)
         var refreshEvery = TimeSpan.FromSeconds(Math.Max(1, _settings.Current.AllowlistRefreshSeconds));
-
-        if (now - _lastRefreshUtc < refreshEvery)
+        if (DateTimeOffset.UtcNow - _lastRefreshUtc < refreshEvery)
             return;
 
         lock (_lock)
         {
+            // Re-capture now and settings inside the lock for a correct second check
+            var now = DateTimeOffset.UtcNow;
             refreshEvery = TimeSpan.FromSeconds(Math.Max(1, _settings.Current.AllowlistRefreshSeconds));
             if (now - _lastRefreshUtc < refreshEvery)
                 return;
 
-            // load allowlist from store
             var list = _store.GetAllAsync(CancellationToken.None).GetAwaiter().GetResult();
             _matcher = AllowlistMatcher.Build(list.Select(x => x.Entry));
             _lastRefreshUtc = now;

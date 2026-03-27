@@ -1,3 +1,4 @@
+using System.Text.Json;
 using RdpShield.Core.Abstractions;
 using RdpShield.Core.Engine;
 using RdpShield.Service.Settings;
@@ -48,75 +49,91 @@ public sealed class Worker : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("RdpShield Service started.");
-        await _eventStore.AppendAsync(_clock.UtcNow, "Information", "ServiceStarted", "RdpShield Service started", ct: stoppingToken);
+        await TryAppendEventAsync(_clock.UtcNow, "Information", "ServiceStarted", "RdpShield Service started", ct: stoppingToken);
 
         await foreach (var ev in _monitor.WatchAsync(stoppingToken))
         {
-            RebuildEngineIfNeeded();
-
-            await _eventStore.AppendAsync(
-                _clock.UtcNow,
-                "Information",
-                "AuthFailedDetected",
-                "Failed authentication attempt",
-                ip: ev.RemoteIp,
-                source: ev.Source,
-                payloadJson: BuildAuthPayloadJson(ev.Username),
-                ct: stoppingToken);
-
-            var decision = _engine.Process(ev);
-
-            if (!decision.ShouldBan || decision.BanRecord is null)
-                continue;
-
-            // prevent spam: if IP is already actively banned, do nothing
-            var isActive = await _banStore.IsActiveBanAsync(decision.BanRecord.Ip, stoppingToken);
-            if (isActive)
-                continue;
-
-            await _banStore.UpsertBanAsync(decision.BanRecord, stoppingToken);
-
-            var s = _settings.Current;
-
-            if (s.EnableFirewall)
+            try
             {
-                try
-                {
-                    var ruleName = $"{s.FirewallRulePrefix} {decision.BanRecord.Ip}";
-                    await _firewall.BanIpAsync(
-                        decision.BanRecord.Ip,
-                        ruleName,
-                        3389,
-                        $"RdpShield ban until {decision.BanRecord.ExpiresUtc:O}",
-                        stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to add firewall rule for {Ip}", decision.BanRecord.Ip);
-
-                    await _eventStore.AppendAsync(
-                        _clock.UtcNow,
-                        "Error",
-                        "FirewallError",
-                        $"Failed to ban {decision.BanRecord.Ip} in firewall: {ex.Message}",
-                        ip: decision.BanRecord.Ip,
-                        source: decision.BanRecord.Source,
-                        ct: stoppingToken);
-                    // continue work, DB ban still exists
-                }
+                await ProcessSecurityEventAsync(ev, stoppingToken);
             }
-
-            await _eventStore.AppendAsync(
-                _clock.UtcNow,
-                "Warning",
-                "IpBanned",
-                $"Banned {decision.BanRecord.Ip}: {decision.BanRecord.Reason}",
-                ip: decision.BanRecord.Ip,
-                source: decision.BanRecord.Source,
-                ct: stoppingToken);
-
-            _logger.LogWarning("Banned {Ip}. Reason: {Reason}", decision.BanRecord.Ip, decision.BanRecord.Reason);
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process security event from {Source} for {Ip}", ev.Source, ev.RemoteIp);
+            }
         }
+    }
+
+    private async Task ProcessSecurityEventAsync(RdpShield.Core.Models.SecurityEvent ev, CancellationToken stoppingToken)
+    {
+        RebuildEngineIfNeeded();
+
+        await TryAppendEventAsync(
+            _clock.UtcNow,
+            "Information",
+            "AuthFailedDetected",
+            "Failed authentication attempt",
+            ip: ev.RemoteIp,
+            source: ev.Source,
+            payloadJson: BuildAuthPayloadJson(ev.Username),
+            ct: stoppingToken);
+
+        var decision = _engine.Process(ev);
+
+        if (!decision.ShouldBan || decision.BanRecord is null)
+            return;
+
+        // prevent spam: if IP is already actively banned, do nothing
+        var isActive = await _banStore.IsActiveBanAsync(decision.BanRecord.Ip, stoppingToken);
+        if (isActive)
+            return;
+
+        await _banStore.UpsertBanAsync(decision.BanRecord, stoppingToken);
+
+        var s = _settings.Current;
+
+        if (s.EnableFirewall)
+        {
+            try
+            {
+                var ruleName = $"{s.FirewallRulePrefix} {decision.BanRecord.Ip}";
+                await _firewall.BanIpAsync(
+                    decision.BanRecord.Ip,
+                    ruleName,
+                    s.RdpPort,
+                    $"RdpShield ban until {decision.BanRecord.ExpiresUtc:O}",
+                    stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add firewall rule for {Ip}", decision.BanRecord.Ip);
+
+                await TryAppendEventAsync(
+                    _clock.UtcNow,
+                    "Error",
+                    "FirewallError",
+                    $"Failed to ban {decision.BanRecord.Ip} in firewall: {ex.Message}",
+                    ip: decision.BanRecord.Ip,
+                    source: decision.BanRecord.Source,
+                    ct: stoppingToken);
+                // continue work, DB ban still exists
+            }
+        }
+
+        await TryAppendEventAsync(
+            _clock.UtcNow,
+            "Warning",
+            "IpBanned",
+            $"Banned {decision.BanRecord.Ip}: {decision.BanRecord.Reason}",
+            ip: decision.BanRecord.Ip,
+            source: decision.BanRecord.Source,
+            ct: stoppingToken);
+
+        _logger.LogWarning("Banned {Ip}. Reason: {Reason}", decision.BanRecord.Ip, decision.BanRecord.Reason);
     }
 
     private void RebuildEngineIfNeeded()
@@ -134,7 +151,7 @@ public sealed class Worker : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("RdpShield Service stopping.");
-        await _eventStore.AppendAsync(_clock.UtcNow, "Information", "ServiceStopping", "RdpShield Service stopping", ct: cancellationToken);
+        await TryAppendEventAsync(_clock.UtcNow, "Information", "ServiceStopping", "RdpShield Service stopping", ct: cancellationToken);
         await base.StopAsync(cancellationToken);
     }
 
@@ -143,16 +160,31 @@ public sealed class Worker : BackgroundService
         if (string.IsNullOrWhiteSpace(username))
             return "{\"username\":null}";
 
-        return $"{{\"username\":\"{EscapeJsonString(username)}\"}}";
+        return $"{{\"username\":{JsonSerializer.Serialize(username, RdpShieldJsonContext.Default.String)}}}";
     }
 
-    private static string EscapeJsonString(string value)
+    private async Task TryAppendEventAsync(
+        DateTimeOffset tsUtc,
+        string level,
+        string type,
+        string message,
+        string? ip = null,
+        string? source = null,
+        string? payloadJson = null,
+        CancellationToken ct = default)
     {
-        return value
-            .Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("\"", "\\\"", StringComparison.Ordinal)
-            .Replace("\r", "\\r", StringComparison.Ordinal)
-            .Replace("\n", "\\n", StringComparison.Ordinal)
-            .Replace("\t", "\\t", StringComparison.Ordinal);
+        try
+        {
+            await _eventStore.AppendAsync(tsUtc, level, type, message, ip, source, payloadJson, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to append event {EventType}", type);
+        }
     }
+
 }

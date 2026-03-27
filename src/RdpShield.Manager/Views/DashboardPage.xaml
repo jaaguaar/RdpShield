@@ -10,6 +10,7 @@
         <conv:OnlineBrushConverter x:Key="OnlineBrush"/>
         <conv:EventTypeGlyphConverter x:Key="EventGlyph"/>
         <conv:EventTypeBrushConverter x:Key="EventBrush"/>
+        <conv:SimplifiedEventMessageConverter x:Key="SimpleEventMessage"/>
         <conv:StringNotEmptyToVisibilityConverter x:Key="StrToVis"/>
     </Page.Resources>
 
@@ -161,7 +162,7 @@
                                     </Border>
 
                                     <TextBlock Grid.Column="3"
-                                               Text="{Binding Message}"
+                                               Text="{Binding Converter={StaticResource SimpleEventMessage}}"
                                                TextTrimming="CharacterEllipsis" />
                                 </Grid>
                             </DataTemplate>

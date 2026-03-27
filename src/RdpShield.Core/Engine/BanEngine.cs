@@ -45,11 +45,14 @@ public sealed class BanEngine
         if (count < _settings.ThresholdCount)
             return new BanDecision(false, null);
 
+        // oldest remaining item in the FIFO queue is the actual first attempt in this window
+        q.TryPeek(out var firstSeenUtc);
+
         var ban = new BanRecord(
             Ip: ip,
             Reason: $"Too many failed logons ({count}/{_settings.ThresholdCount}) in {_settings.ThresholdWindowSeconds}s",
             Source: ev.Source,
-            FirstSeenUtc: windowStart,
+            FirstSeenUtc: firstSeenUtc,
             LastSeenUtc: now,
             ExpiresUtc: now.AddMinutes(_settings.BanDurationMinutes),
             AttemptsInWindow: count

@@ -185,8 +185,7 @@ public sealed partial class BansViewModel : ObservableObject, IDisposable
         {
             src = src.Where(b =>
                 b.Ip.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                b.Reason.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                b.Source.Contains(q, StringComparison.OrdinalIgnoreCase));
+                b.Reason.Contains(q, StringComparison.OrdinalIgnoreCase));
         }
 
         foreach (var b in src)

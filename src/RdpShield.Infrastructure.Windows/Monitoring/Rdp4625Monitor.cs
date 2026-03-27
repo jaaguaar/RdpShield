@@ -2,23 +2,26 @@ using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using RdpShield.Core.Abstractions;
 using RdpShield.Core.Models;
+using RdpShield.Core.Security;
 using System.Runtime.Versioning;
-using System.Xml.Linq;
 
 namespace RdpShield.Infrastructure.Windows.Monitoring;
 
 [SupportedOSPlatform("windows")]
 public sealed class Rdp4625Monitor : IMonitor, IDisposable
 {
+    private readonly ILogger<Rdp4625Monitor> _logger;
     private readonly Channel<SecurityEvent> _channel = Channel.CreateUnbounded<SecurityEvent>(
         new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
 
     private readonly EventLogWatcher _watcher;
 
-    public Rdp4625Monitor()
+    public Rdp4625Monitor(ILogger<Rdp4625Monitor> logger)
     {
+        _logger = logger;
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("Rdp4625Monitor is supported only on Windows.");
         // Event ID 4625 in Security log
@@ -44,77 +47,31 @@ public sealed class Rdp4625Monitor : IMonitor, IDisposable
         {
             if (e.EventRecord is null) return;
 
-            // Pull IP from event properties (best-effort)
-            var ip = TryExtractIp(e.EventRecord);
+            var parsed = Event4625Parser.Parse(e.EventRecord.ToXml());
+            if (!parsed.IsRemoteDesktopFailure)
+                return;
+
+            var ip = parsed.RemoteIp;
             if (string.IsNullOrWhiteSpace(ip) || ip == "-" ) return;
+            if (!LooksLikeIp(ip)) return;
 
             var ts = e.EventRecord.TimeCreated.HasValue
                 ? new DateTimeOffset(e.EventRecord.TimeCreated.Value.ToUniversalTime())
                 : DateTimeOffset.UtcNow;
 
-            var username = TryExtractUsername(e.EventRecord);
-
             var sec = new SecurityEvent(
                 Source: "RDP",
                 RemoteIp: ip,
                 TimestampUtc: ts,
-                Username: username,
+                Username: parsed.Username,
                 Machine: Environment.MachineName,
                 Raw: null);
 
             _channel.Writer.TryWrite(sec);
         }
-        catch
+        catch (Exception ex)
         {
-            // swallow any parsing issues to avoid killing the watcher thread
-        }
-    }
-
-    private static string? TryExtractIp(EventRecord record)
-    {
-        // 4625 has "IpAddress" field, but indexes can vary depending on OS/language.
-        // Try indexed properties first, then XML by Data Name.
-        try
-        {
-            foreach (var p in record.Properties)
-            {
-                var s = p?.Value?.ToString();
-                if (LooksLikeIp(s)) return s!;
-            }
-        }
-        catch { /* ignore */ }
-
-        var xmlValue = TryExtractDataField(record, "IpAddress");
-        if (LooksLikeIp(xmlValue)) return xmlValue;
-
-        return null;
-    }
-
-    private static string? TryExtractUsername(EventRecord record)
-    {
-        var username = TryExtractDataField(record, "TargetUserName");
-        if (string.IsNullOrWhiteSpace(username) || username == "-")
-            return null;
-
-        return username;
-    }
-
-    private static string? TryExtractDataField(EventRecord record, string fieldName)
-    {
-        try
-        {
-            var doc = XDocument.Parse(record.ToXml());
-            var data = doc
-                .Descendants()
-                .FirstOrDefault(e =>
-                    e.Name.LocalName.Equals("Data", StringComparison.OrdinalIgnoreCase) &&
-                    e.Attribute("Name")?.Value.Equals(fieldName, StringComparison.OrdinalIgnoreCase) == true);
-
-            return data?.Value?.Trim();
-        }
-        catch
-        {
-            return null;
+            _logger.LogWarning(ex, "Failed to process Security event record; skipping.");
         }
     }
 

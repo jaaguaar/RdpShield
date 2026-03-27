@@ -79,6 +79,8 @@ public sealed class SettingsStore
         if (string.IsNullOrWhiteSpace(s.FirewallRulePrefix))
             s.FirewallRulePrefix = "RdpShield Block";
 
+        if (s.RdpPort < 1 || s.RdpPort > 65535) s.RdpPort = 3389;
+
         return s;
     }
 
@@ -90,6 +92,7 @@ public sealed class SettingsStore
         BanMinutes = s.BanMinutes,
         EnableFirewall = s.EnableFirewall,
         FirewallRulePrefix = s.FirewallRulePrefix,
+        RdpPort = s.RdpPort,
         AllowlistRefreshSeconds = s.AllowlistRefreshSeconds
     };
 }

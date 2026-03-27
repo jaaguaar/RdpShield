@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using RdpShield.Api;
 using RdpShield.Core.Abstractions;
+using RdpShield.Core.Security;
 using RdpShield.Service.Security;
 using RdpShield.Service.Settings;
 
@@ -272,7 +273,7 @@ public sealed class PipeServerService : BackgroundService
                         await _firewall.BanIpAsync(
                             ip,
                             ruleName,
-                            3389,
+                            s.RdpPort,
                             $"RdpShield manual ban until {expires:O}",
                             ct);
                     }
@@ -328,10 +329,13 @@ public sealed class PipeServerService : BackgroundService
             case "AddAllowlistEntry":
             {
                 var p = GetParams<AddAllowlistParams>(req);
-                await _allowStore.AddOrUpdateAsync(p.Entry, p.Comment, ct);
+                var entry = p.Entry?.Trim() ?? string.Empty;
+                if (!CidrMatcher.TryParse(entry, out _))
+                    throw new InvalidOperationException($"Invalid IP or CIDR format: '{entry}'.");
+                await _allowStore.AddOrUpdateAsync(entry, p.Comment, ct);
                 await _eventStore.AppendAsync(
                     _clock.UtcNow, "Information", "AllowlistUpdated",
-                    $"Allowlist add/update: {p.Entry}", ct: ct);
+                    $"Allowlist add/update: {entry}", ct: ct);
 
                 return new PipeResponse
                 {
@@ -398,6 +402,7 @@ public sealed class PipeServerService : BackgroundService
                     BanMinutes = s.BanMinutes,
                     EnableFirewall = s.EnableFirewall,
                     FirewallRulePrefix = s.FirewallRulePrefix,
+                    RdpPort = s.RdpPort,
                     AllowlistRefreshSeconds = s.AllowlistRefreshSeconds
                 };
 
@@ -425,6 +430,8 @@ public sealed class PipeServerService : BackgroundService
                     ? "RdpShield Block"
                     : dto.FirewallRulePrefix;
 
+                s.RdpPort = dto.RdpPort;
+
                 s.AllowlistRefreshSeconds = dto.AllowlistRefreshSeconds;
 
                 _settings.Update(s);
@@ -433,7 +440,7 @@ public sealed class PipeServerService : BackgroundService
                     _clock.UtcNow,
                     "Information",
                     "SettingsUpdated",
-                    $"Settings updated: attempts={dto.AttemptsThreshold}, window={dto.WindowSeconds}s, ban={dto.BanMinutes}m, firewall={dto.EnableFirewall}, allowRefresh={dto.AllowlistRefreshSeconds}s",
+                    $"Settings updated: attempts={dto.AttemptsThreshold}, window={dto.WindowSeconds}s, ban={dto.BanMinutes}m, firewall={dto.EnableFirewall}, rdpPort={dto.RdpPort}, allowRefresh={dto.AllowlistRefreshSeconds}s",
                     ct: ct);
 
                 return new PipeResponse

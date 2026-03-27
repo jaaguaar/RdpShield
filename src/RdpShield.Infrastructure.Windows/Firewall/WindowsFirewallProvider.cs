@@ -27,16 +27,19 @@ exit 1
 
     public Task BanIpAsync(string ip, string ruleName, int port, string? description = null, CancellationToken ct = default)
     {
+        if (!System.Net.IPAddress.TryParse(ip, out _))
+            throw new ArgumentException($"Invalid IP address: '{ip}'.", nameof(ip));
+        if (port is < 1 or > 65535)
+            throw new ArgumentOutOfRangeException(nameof(port), port, "Port must be between 1 and 65535.");
+
         var cmd = $@"
 $name = '{Escape(ruleName)}'
 $ip   = '{Escape(ip)}'
 $port = {port}
 $desc = '{Escape(description ?? "Blocked by RdpShield")}'
 
-$existing = Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue
-if ($null -ne $existing) {{ exit 0 }}
-
-New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Block -Enabled True -Protocol TCP -LocalPort $port -RemoteAddress $ip -Profile Any -Description $desc | Out-Null
+Remove-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue | Out-Null
+New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Block -Enabled True -Protocol TCP -LocalPort $port -RemoteAddress $ip -Profile Any -Description $desc -ErrorAction Stop | Out-Null
 exit 0
 ";
         EnsureOk(RunWinPS(cmd), "BanIpAsync failed");
@@ -47,24 +50,8 @@ exit 0
     {
         var cmd = $@"
 $name = '{Escape(ruleName)}'
-$ip   = '{Escape(ip)}'
 
-$existing = Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue
-if ($null -ne $existing) {{
-  $existing | Remove-NetFirewallRule -ErrorAction SilentlyContinue
-  exit 0
-}}
-
-# fallback: remove any rule that targets this IP (best-effort)
-$rules = Get-NetFirewallRule -ErrorAction SilentlyContinue
-foreach ($r in $rules) {{
-  try {{
-    $addr = Get-NetFirewallAddressFilter -AssociatedNetFirewallRule $r -ErrorAction SilentlyContinue
-    if ($null -ne $addr -and $addr.RemoteAddress -contains $ip) {{
-      $r | Remove-NetFirewallRule -ErrorAction SilentlyContinue
-    }}
-  }} catch {{}}
-}}
+Remove-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue | Out-Null
 exit 0
 ";
         EnsureOk(RunWinPS(cmd), "UnbanIpAsync failed");

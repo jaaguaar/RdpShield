@@ -12,6 +12,7 @@ public sealed class RuntimeSettings
     // Firewall
     public bool EnableFirewall { get; set; } = true;
     public string FirewallRulePrefix { get; set; } = "RdpShield Block";
+    public int RdpPort { get; set; } = 3389;
 
     // Allowlist cache refresh
     public int AllowlistRefreshSeconds { get; set; } = 10;
